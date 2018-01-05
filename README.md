@@ -69,6 +69,9 @@ Different possible variants (enable through spark.siret.knnjoin.pivot.method):
 	EXACT - exact k-NN join
 	APPROX - heuristic approximate k-NN join
 	EPSILON_APPROX - epsilon guaranted approximate k-NN join
+	
+	EXACT_BOUNDS - computes upper bounds for the EXACT variant
+	APPROX_BOUNDS - computes upper bounds for the APPROX variant - can be used to predict parameters performance (see our paper)
 
 	
 ## Naive exact kNN join 
