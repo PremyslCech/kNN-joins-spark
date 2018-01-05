@@ -1,0 +1,1 @@
+Folder for internal libs (e.g. if you don't have Hadoop installed). They will NOT be packed into a jar.

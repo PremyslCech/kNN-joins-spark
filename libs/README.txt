@@ -1,0 +1,1 @@
+Folder for external libs. They will be packed into a jar.
