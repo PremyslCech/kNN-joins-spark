@@ -4,6 +4,10 @@ public class MetricProvider {
 
 	private static IMetric metric = null;
 
+	public static IMetric getNewMetric() {
+		return initMetric();
+	}
+
 	public static IMetric getMetric() {
 		if (metric == null) {
 			metric = initMetric();

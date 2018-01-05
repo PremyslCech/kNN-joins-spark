@@ -83,7 +83,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 							});
 						}
 
-						final IMetric metric = MetricProvider.getMetric();
+						final IMetric metric = MetricProvider.getNewMetric();
 						final List<Feature> pivotsLocal = pivots.value();
 						final PartitionStatistics[] databasePartitionStats = voronoiStats.value().getDatabaseStatistics();
 
