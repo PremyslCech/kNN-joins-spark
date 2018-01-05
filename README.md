@@ -59,10 +59,17 @@ k-NN joins output format:
 	Neighbors should be sorted in an ascending order.
 
 
-## kNN join (approx)
+## Pivot based kNN join (approx)
 
 spark-submit --class cz.siret.knn.pivot.KNNJoinApprox --properties-file siret.conf --conf spark.siret.knnjoin.k=10 --executor-memory 4500m --master yarn --deploy-mode client \
 	--num-executors 19 Siret.jar <database_path> <queries_path> <output_path>
+	
+Different possible variants (enable through spark.siret.knnjoin.pivot.method):
+
+	EXACT - exact k-NN join
+	APPROX - heuristic approximate k-NN join
+	EPSILON_APPROX - epsilon guaranted approximate k-NN join
+
 	
 ## Naive exact kNN join 
 
