@@ -1,44 +1,48 @@
 package cz.siret.knn.eval;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class PrecisionStats {
 
-	private final float precision;
-	private final float distance;
-	private final float distRatio;
-	private final float effectiveError;
-	private final float avgEffectiveError;
+	private final List<ApproxMeasure> approxMeasures;
 	private final long count;
 
-	public PrecisionStats(float precision, float distance, float distRatio, float effectiveError, float avgEffectiveError, long count) {
-		this.precision = precision;
-		this.distance = distance;
-		this.distRatio = distRatio;
-		this.effectiveError = effectiveError;
-		this.avgEffectiveError = avgEffectiveError;
+	public PrecisionStats(List<ApproxMeasure> approxMeasures, long count) {
+		this.approxMeasures = approxMeasures;
 		this.count = count;
-
 	}
 
-	public float getPrecision() {
-		return precision;
+	public PrecisionStats combine(PrecisionStats other) {
+		if (approxMeasures.size() != other.approxMeasures.size()) {
+			throw new IllegalArgumentException("Different number of measures.");
+		}
+
+		List<ApproxMeasure> combinedMeasures = new ArrayList<ApproxMeasure>(approxMeasures.size());
+		for (int i = 0; i < approxMeasures.size(); i++) {
+			combinedMeasures.add(approxMeasures.get(i).combine(other.approxMeasures.get(i)));
+		}
+
+		return new PrecisionStats(combinedMeasures, count + other.count);
 	}
 
-	public float getDistance() {
-		return distance;
+	public String getOutput(long totalCount) {
+
+		final String separator = "\t";
+
+		StringBuilder output = new StringBuilder();
+		for (int i = 0; i < approxMeasures.size(); i++) {
+
+			ApproxMeasure approxMeasure = approxMeasures.get(i);
+			output.append(approxMeasure.getMin()).append(separator).append(approxMeasure.getMax()).append(separator).append(approxMeasure.getAverage(totalCount));
+
+			if (i < approxMeasures.size() - 1) {
+				output.append(separator);
+			}
+		}
+		return output.toString();
 	}
 
-	public float getDistRatio() {
-		return distRatio;
-	}
-
-	public float getEffectiveError() {
-		return effectiveError;
-	}
-
-	public float getAvgEffectiveError() {
-		return avgEffectiveError;
-	}
-	
 	public long getCount() {
 		return count;
 	}

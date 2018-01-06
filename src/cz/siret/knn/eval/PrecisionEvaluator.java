@@ -2,6 +2,7 @@ package cz.siret.knn.eval;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -63,8 +64,7 @@ public class PrecisionEvaluator {
 					System.err.println("Queries count " + count + " is not equal to total count " + totalCount + " for K " + k);
 				}
 
-				System.out.println(k + "\t" + tuple._2.getDistance() / totalCount + "\t" + tuple._2.getPrecision() / totalCount + "\t"
-						+ tuple._2.getDistRatio() / totalCount + "\t" + tuple._2.getEffectiveError() / totalCount + "\t" + tuple._2.getAvgEffectiveError() / totalCount);
+				System.out.println(k + "\t" + tuple._2.getOutput(totalCount));
 			}
 
 			jsc.close();
@@ -83,13 +83,13 @@ public class PrecisionEvaluator {
 		private JavaPairRDD<Integer, PrecisionStats> getStatsForKValues(JavaPairRDD<FeaturesKey, NNResult> baseKnnResults,
 				JavaPairRDD<FeaturesKey, NNResult> compareKnnResults, final String operator) {
 
-			return baseKnnResults.cogroup(compareKnnResults).flatMapToPair(
-					new PairFlatMapFunction<Tuple2<FeaturesKey, Tuple2<Iterable<NNResult>, Iterable<NNResult>>>, Integer, PrecisionStats>() {
+			return baseKnnResults.cogroup(compareKnnResults)
+					.flatMapToPair(new PairFlatMapFunction<Tuple2<FeaturesKey, Tuple2<Iterable<NNResult>, Iterable<NNResult>>>, Integer, PrecisionStats>() {
 
 						final float epsilon = Math.ulp(1f); // machine epsilon for float
 
-						public Iterator<Tuple2<Integer, PrecisionStats>> call(
-								Tuple2<FeaturesKey, Tuple2<Iterable<NNResult>, Iterable<NNResult>>> kNNResults) throws Exception {
+						public Iterator<Tuple2<Integer, PrecisionStats>> call(Tuple2<FeaturesKey, Tuple2<Iterable<NNResult>, Iterable<NNResult>>> kNNResults)
+								throws Exception {
 
 							FeaturesKey queryKey = kNNResults._1;
 							NNResult base = getKnnResults(kNNResults._2._1.iterator(), queryKey);
@@ -114,7 +114,11 @@ public class PrecisionEvaluator {
 									float effectiveError = getEffectiveErrorForK(base, compare, k);
 									float avgEffectiveError = getAverageEffectiveErrorForK(base, compare, k);
 
-									output.add(new Tuple2<>(k + 1, new PrecisionStats(precision, distanceDiff, distRatio, effectiveError, avgEffectiveError, 1)));
+									List<ApproxMeasure> approxMeasures = Arrays.asList(new ApproxMeasure("DistanceDiff", distanceDiff), new ApproxMeasure("Precision", precision),
+											new ApproxMeasure("DistanceRatio", distRatio), new ApproxMeasure("EffectiveError", effectiveError),
+											new ApproxMeasure("AvgEffectiveError", avgEffectiveError));
+
+									output.add(new Tuple2<>(k + 1, new PrecisionStats(approxMeasures, 1)));
 								}
 							}
 
@@ -132,8 +136,7 @@ public class PrecisionEvaluator {
 							return result;
 						}
 
-						private void checkKnnResultsRelations(final String operator, FeaturesKey queryKey, NNResult base, NNResult compare)
-								throws Exception {
+						private void checkKnnResultsRelations(final String operator, FeaturesKey queryKey, NNResult base, NNResult compare) throws Exception {
 							// check the sets relation
 							if (base == null && compare == null)
 								throw new Exception("No baseInfo nor cmpInfo for " + queryKey + " (weird)");
@@ -198,7 +201,7 @@ public class PrecisionEvaluator {
 								return compareDist;
 							}
 
-							return compareDist / baseDist - 1;
+							return compareDist / baseDist;
 						}
 
 						public float getAverageEffectiveErrorForK(NNResult base, NNResult compare, int k) throws Exception {
@@ -218,9 +221,7 @@ public class PrecisionEvaluator {
 
 					}).reduceByKey(new Function2<PrecisionStats, PrecisionStats, PrecisionStats>() {
 						public PrecisionStats call(PrecisionStats stats1, PrecisionStats stats2) throws Exception {
-							return new PrecisionStats(stats1.getPrecision() + stats2.getPrecision(), stats1.getDistance() + stats2.getDistance(),
-									stats1.getDistRatio() + stats2.getDistRatio(), stats1.getEffectiveError() + stats2.getEffectiveError(),
-									stats1.getAvgEffectiveError() + stats2.getAvgEffectiveError(), stats1.getCount() + stats2.getCount());
+							return stats1.combine(stats2);
 						}
 					});
 		}
