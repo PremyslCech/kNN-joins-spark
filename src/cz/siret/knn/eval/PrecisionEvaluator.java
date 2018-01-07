@@ -197,8 +197,8 @@ public class PrecisionEvaluator {
 								throw new Exception("Wierd base kNN.");
 							}
 
-							if (baseDist == 0) { // if both distances == 0 => returns 0, otherwise returns compareDist
-								return compareDist;
+							if (baseDist == 0) { // if both distances == 0 => returns 1, otherwise returns compareDist + 1
+								return compareDist + 1;
 							}
 
 							return compareDist / baseDist;
