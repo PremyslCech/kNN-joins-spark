@@ -182,9 +182,7 @@ public class PrecisionEvaluator {
 								d1 += base.dbDistances.get(i);
 								d2 += compare.dbDistances.get(i);
 							}
-							if (d1 > d2) {
-								throw new Exception("Wierd base kNN.");
-							}
+							CheckDistances(d1, d2);
 
 							return d2 == 0 ? 1 : d1 / d2;
 						}
@@ -193,15 +191,20 @@ public class PrecisionEvaluator {
 
 							float compareDist = compare.dbDistances.get(k);
 							float baseDist = base.dbDistances.get(k);
-							if (baseDist > compareDist) {
-								throw new Exception("Wierd base kNN.");
-							}
+							CheckDistances(baseDist, compareDist);
 
 							if (baseDist == 0) { // if both distances == 0 => returns 1, otherwise returns compareDist + 1
 								return compareDist + 1;
 							}
 
 							return compareDist / baseDist;
+						}
+
+						private void CheckDistances(float baseDist, float compareDist) throws Exception {
+							final float tolerance = 0.000001f;
+							if (baseDist - tolerance > compareDist) {
+								throw new Exception("Wierd base kNN. (base: " + baseDist + ", compare: " + compareDist + ")");
+							}
 						}
 
 						public float getAverageEffectiveErrorForK(NNResult base, NNResult compare, int k) throws Exception {

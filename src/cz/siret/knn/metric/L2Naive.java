@@ -7,7 +7,7 @@ import cz.siret.knn.metric.IMetric;
 @SuppressWarnings("serial")
 public class L2Naive extends IMetric {
 
-	private int shiftsScale = 1;
+	private final double shiftsScale;
 
 	public L2Naive(int scale) {
 		this.shiftsScale = scale;
@@ -28,9 +28,9 @@ public class L2Naive extends IMetric {
 		if (coords1.length != coords2.length)
 			throw new IllegalArgumentException();
 
-		float dist = 0;
+		double dist = 0;
 		for (int i = 0; i < coords1.length; i++) {
-			float diff = (coords1[i] - coords2[i]) / ((float) shiftsScale);
+			double diff = (coords1[i] - coords2[i]) / shiftsScale;
 			dist += diff * diff;
 		}
 		return (float) Math.sqrt(dist);
