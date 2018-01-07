@@ -20,9 +20,11 @@ import org.apache.spark.broadcast.Broadcast;
 import org.apache.spark.storage.StorageLevel;
 
 import cz.siret.knn.KnnHelper;
+import cz.siret.knn.KnnMetrics;
 import cz.siret.knn.Logger;
 import cz.siret.knn.ObjectWithDistance;
 import cz.siret.knn.SiretConfig;
+import cz.siret.knn.SparkMetricsRegistrator;
 import cz.siret.knn.SparkUtils;
 import cz.siret.knn.metric.IMetric;
 import cz.siret.knn.metric.L2MetricSiret;
@@ -87,6 +89,7 @@ public class KNNJoinApprox {
 					.registerKryoClasses(new Class[] { Feature.class, FeaturesKey.class, ICurveOrder.class, CurveWithFeature.class, Curve.class,
 							BigInteger.class, PartitionWithShift.class, Partitions.class, PartitionBoundaries.class, ObjectWithDistance.class, NNResult.class });
 			JavaSparkContext jsc = new JavaSparkContext(conf);
+			KnnMetrics knnMetrics = SparkMetricsRegistrator.register(jsc.sc());
 			Logger logger = new Logger(jsc.getConf().get("spark.submit.deployMode").toLowerCase().equals("client")); // logging only for the client mode
 			SparkUtils sparkUtils = new SparkUtils();
 			sparkUtils.deleteOutputDirectory(jsc.hadoopConfiguration(), outputPath);
@@ -131,6 +134,7 @@ public class KNNJoinApprox {
 			//
 			kNNResult.saveAsTextFile(outputPath);
 			System.out.println("Curve kNN join done!");
+			System.out.println(knnMetrics.produceOutput());
 
 			jsc.close();
 		}

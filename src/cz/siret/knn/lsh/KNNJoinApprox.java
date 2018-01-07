@@ -19,9 +19,11 @@ import org.apache.spark.api.java.function.Function2;
 import org.apache.spark.api.java.function.PairFlatMapFunction;
 import org.apache.spark.broadcast.Broadcast;
 
+import cz.siret.knn.KnnMetrics;
 import cz.siret.knn.Logger;
 import cz.siret.knn.ObjectWithDistance;
 import cz.siret.knn.SiretConfig;
+import cz.siret.knn.SparkMetricsRegistrator;
 import cz.siret.knn.SparkUtils;
 import cz.siret.knn.naive.NaiveKnnCalculator;
 import scala.Tuple2;
@@ -74,6 +76,7 @@ public class KNNJoinApprox {
 					.registerKryoClasses(new Class[] { Feature.class, FeaturesKey.class, HashPartition.class, HashTable.class,
 							PartialDimensionStats.class, DimensionStats.class, ObjectWithDistance.class, NNResult.class });
 			JavaSparkContext jsc = new JavaSparkContext(conf);
+			KnnMetrics knnMetrics = SparkMetricsRegistrator.register(jsc.sc());
 			Logger logger = new Logger(jsc.getConf().get("spark.submit.deployMode").toLowerCase().equals("client")); // logging only for the client mode
 			SparkUtils sparkUtils = new SparkUtils();
 			sparkUtils.deleteOutputDirectory(jsc.hadoopConfiguration(), outputPath);
@@ -115,6 +118,7 @@ public class KNNJoinApprox {
 
 			kNNResult.saveAsTextFile(outputPath);
 			System.out.println("LSH kNN join done!");
+			System.out.println(knnMetrics.produceOutput());
 
 			jsc.close();
 		}

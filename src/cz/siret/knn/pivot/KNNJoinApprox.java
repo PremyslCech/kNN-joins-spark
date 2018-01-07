@@ -19,9 +19,11 @@ import org.apache.spark.storage.StorageLevel;
 import org.apache.spark.util.LongAccumulator;
 
 import cz.siret.knn.DescDistanceComparator;
+import cz.siret.knn.KnnMetrics;
 import cz.siret.knn.Logger;
 import cz.siret.knn.ObjectWithDistance;
 import cz.siret.knn.SiretConfig;
+import cz.siret.knn.SparkMetricsRegistrator;
 import cz.siret.knn.SparkUtils;
 import cz.siret.knn.metric.IMetric;
 import cz.siret.knn.metric.MetricProvider;
@@ -102,6 +104,7 @@ public class KNNJoinApprox {
 					.registerKryoClasses(new Class[] { Feature.class, FeaturesKey.class, Pair.class, FeatureWithOnePartition.class,
 							FeatureWithMultiplePartitions.class, ObjectWithDistance.class, VoronoiStatistics.class, PartitionStatistics.class, NNResult.class });
 			JavaSparkContext jsc = new JavaSparkContext(conf);
+			KnnMetrics knnMetrics = SparkMetricsRegistrator.register(jsc.sc());
 			System.out.println("Startup ready. Serializer: " + jsc.getConf().get("spark.serializer"));
 
 			// delete output directory if exists
@@ -117,6 +120,7 @@ public class KNNJoinApprox {
 				kNNResult.saveAsTextFile(outputPath);
 			}
 			System.out.println("The kNN job has finished.");
+			System.out.println(knnMetrics.produceOutput());
 			System.out.println("Distance computations: " + distanceComputations.value());
 			System.out.println("Database replications: " + databaseReplications.value());
 
