@@ -201,7 +201,7 @@ public class PrecisionEvaluator {
 						}
 
 						private void CheckDistances(float baseDist, float compareDist) throws Exception {
-							final float tolerance = 0.000001f;
+							final float tolerance = 0.0001f;
 							if (baseDist - tolerance > compareDist) {
 								throw new Exception("Wierd base kNN. (base: " + baseDist + ", compare: " + compareDist + ")");
 							}
