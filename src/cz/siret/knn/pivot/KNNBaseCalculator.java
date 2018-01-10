@@ -39,9 +39,9 @@ public abstract class KNNBaseCalculator implements Serializable {
 	/**
 	 * Computes final neighbors for all queries using different strategies.
 	 */
-	public JavaRDD<NNResult> computeKNN(JavaPairRDD<Integer, IFeatureWithPartition> partitionedFeatures, final int k,
-			final Broadcast<List<Feature>> pivots, final Broadcast<VoronoiStatistics> voronoiStats, final Broadcast<int[]> groups, final int numberOfReducers,
-			final float epsilon, final float epsilonMultiplier) {
+	public JavaRDD<NNResult> computeKNN(JavaPairRDD<Integer, IFeatureWithPartition> partitionedFeatures, final int k, final Broadcast<List<Feature>> pivots,
+			final Broadcast<VoronoiStatistics> voronoiStats, final Broadcast<int[]> groups, final int numberOfReducers, final float epsilon,
+			final boolean exactParentFiltering) {
 
 		return getObjectsMappedToGroups(partitionedFeatures, groups).groupByKey(numberOfReducers)
 				.flatMap(new FlatMapFunction<Tuple2<Integer, Iterable<IFeatureWithPartition>>, NNResult>() {
@@ -87,7 +87,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 						final List<Feature> pivotsLocal = pivots.value();
 						final PartitionStatistics[] databasePartitionStats = voronoiStats.value().getDatabaseStatistics();
 
-						return getKnnResultsIterator(partsR, partsS, metric, pivotsLocal, databasePartitionStats, k, epsilon, epsilonMultiplier);
+						return getKnnResultsIterator(partsR, partsS, metric, pivotsLocal, databasePartitionStats, k, epsilon, exactParentFiltering);
 					}
 				});
 	}
@@ -97,7 +97,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 
 	private Iterator<NNResult> getKnnResultsIterator(final HashMap<Integer, List<IFeatureWithPartition>> partsR,
 			final HashMap<Integer, List<IFeatureWithPartition>> partsS, final IMetric metric, final List<Feature> pivotsLocal,
-			final PartitionStatistics[] databasePartitionStats, final int k, final float epsilon, final float epsilonMultiplier) {
+			final PartitionStatistics[] databasePartitionStats, final int k, final float epsilon, final boolean exactParentFiltering) {
 
 		return new Iterator<NNResult>() {
 
@@ -134,7 +134,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 
 					// perform main k-NN join using metric space pruning techniques
 					NNResult output = findKNNForSingleObject(query, k, partsS, metric, pivotsLocal, databasePartitionStats, distancesBetweenPivots, epsilon,
-							epsilonMultiplier);
+							exactParentFiltering);
 
 					if (index >= queries.size()) {
 						pivotId++;
@@ -160,9 +160,9 @@ public abstract class KNNBaseCalculator implements Serializable {
 		return output;
 	}
 
-	private NNResult findKNNForSingleObject(IFeatureWithPartition query, final int k, HashMap<Integer, List<IFeatureWithPartition>> partsS,
-			IMetric metric, List<Feature> pivots, PartitionStatistics[] databasePartitionStats, float[] distancesBetweenPivots, float epsilon,
-			float epsilonMultiplier) throws Exception {
+	private NNResult findKNNForSingleObject(IFeatureWithPartition query, final int k, HashMap<Integer, List<IFeatureWithPartition>> partsS, IMetric metric,
+			List<Feature> pivots, PartitionStatistics[] databasePartitionStats, float[] distancesBetweenPivots, float epsilon, boolean exactParentFiltering)
+			throws Exception {
 
 		KnnHelper knnHelper = new KnnHelper();
 		PriorityQueue<Tuple2<FeaturesKeyClassified, Float>> neighbors = knnHelper.getNeighborsPriorityQueue(k);
@@ -214,14 +214,14 @@ public abstract class KNNBaseCalculator implements Serializable {
 				if (neighbors.size() < k) {
 					neighbors.add(new Tuple2<>(o_S.getFeature().toFeaturesKeyClassified(), dist));
 					if (neighbors.size() == k) {
-						actualRadius = neighbors.peek()._2 / epsilon; // the epsilon is used after "k" candidates are found
-						ballFilterRadius = neighbors.peek()._2 / (epsilon * epsilonMultiplier);
+						actualRadius = neighbors.peek()._2 / (exactParentFiltering ? 1 : epsilon); // the epsilon is used after "k" candidates are found
+						ballFilterRadius = neighbors.peek()._2 / epsilon;
 					}
 				} else if (dist < actualRadius) {
 					neighbors.remove();
 					neighbors.add(new Tuple2<>(o_S.getFeature().toFeaturesKeyClassified(), dist));
-					actualRadius = neighbors.peek()._2 / epsilon;
-					ballFilterRadius = neighbors.peek()._2 / (epsilon * epsilonMultiplier);
+					actualRadius = neighbors.peek()._2 / (exactParentFiltering ? 1 : epsilon);
+					ballFilterRadius = neighbors.peek()._2 / epsilon;
 				}
 			}
 		}

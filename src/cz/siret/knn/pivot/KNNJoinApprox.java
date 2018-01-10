@@ -64,7 +64,7 @@ public class KNNJoinApprox {
 		private final int maxNumberOfBuckets;
 		private final int staticPivotCount;
 		private final float epsilonParam;
-		private final float epsilonMultiplierParam;
+		private final boolean exactParentFiltering;
 		private Method method;
 
 		public Job(String[] args) {
@@ -84,7 +84,7 @@ public class KNNJoinApprox {
 			staticPivotCount = conf.getInt(SiretConfig.STATIC_PIVOT_COUNT_STR, 10);
 			useCutRegions = staticPivotCount > 0;
 			epsilonParam = (float) conf.getDouble(SiretConfig.EPSILON_STR, 1);
-			epsilonMultiplierParam = (float) conf.getDouble(SiretConfig.EPSILON_MULTIPLIER_STR, 1);
+			exactParentFiltering = conf.getBoolean(SiretConfig.EPSILON_EXACT_PF_STR, true);
 			try {
 				method = Method.valueOf(conf.get(SiretConfig.PIVOT_METHOD_STR).toUpperCase());
 			} catch (Exception e) {
@@ -98,7 +98,7 @@ public class KNNJoinApprox {
 			System.out.println("Starting Spark with parameters:");
 			System.out.println("Reducers: " + numberOfReducers + ", MinPartitions: " + minNumberOfPartitions + ", PivotCount: " + pivotCount + ", StaticPivotCount: "
 					+ staticPivotCount + ", MaxSplitDepth: " + maxRecDepth + ", BucketsToVisit: " + maxNumberOfBuckets + ", K: " + k + ", Method: " + method
-					+ ", Epsilon: " + epsilonParam + ", EpsilonMultiplier: " + epsilonMultiplierParam);
+					+ ", Epsilon: " + epsilonParam + ", ExactParentFilter: " + exactParentFiltering);
 
 			SparkConf conf = new SparkConf().setAppName("Pivot kNN join").set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
 					.registerKryoClasses(new Class[] { Feature.class, FeaturesKey.class, Pair.class, FeatureWithOnePartition.class,
@@ -173,7 +173,7 @@ public class KNNJoinApprox {
 			switch (method) {
 			case APPROX:
 				kNNResult = new KNNApproxCalculator(distanceComputations, databaseReplications, maxNumberOfBuckets).computeKNN(partitionedFeatures, k,
-						broadcastedPivots, broadcastedVoronoiStats, broadcastedGroups, numberOfReducers, 1, 1);
+						broadcastedPivots, broadcastedVoronoiStats, broadcastedGroups, numberOfReducers, 1, true);
 				break;
 			case EXACT_BOUNDS: // set parameters to exact search and do the same computation which is done for the approximate bounds
 				maxRecDepth = pivotCount;
@@ -212,13 +212,12 @@ public class KNNJoinApprox {
 			case EXACT:
 				IMetric metric = MetricProvider.getMetric();
 				float epsilon = method == Method.EXACT ? 1 : epsilonParam;
-				float epsilonMultiplier = method == Method.EXACT ? 1 : epsilonMultiplierParam;
 				List<List<ObjectWithDistance>> lbOfPartitionSToGroups = boundsCalculator.getLBPartitionOfSToGroups(groups, numberOfReducers, pivots, staticPivotIds,
-						voronoiStatistics, k, metric, epsilon * epsilonMultiplier * epsilonMultiplier);
+						voronoiStatistics, k, metric, epsilon);
 				logger.logLowerBounds(lbOfPartitionSToGroups);
 				Broadcast<List<List<ObjectWithDistance>>> broadcastedLowerBounds = jsc.broadcast(lbOfPartitionSToGroups);
 				kNNResult = new KNNExactCalculator(distanceComputations, databaseReplications, broadcastedLowerBounds).computeKNN(partitionedFeatures, k,
-						broadcastedPivots, broadcastedVoronoiStats, broadcastedGroups, numberOfReducers, epsilon, epsilonMultiplier);
+						broadcastedPivots, broadcastedVoronoiStats, broadcastedGroups, numberOfReducers, epsilon, exactParentFiltering);
 				break;
 			default:
 				throw new Exception("Unknown or unimplemented kNN join computation method " + method);

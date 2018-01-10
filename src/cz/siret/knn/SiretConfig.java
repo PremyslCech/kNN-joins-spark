@@ -15,7 +15,7 @@ public class SiretConfig {
 	public static final String MAX_SPLIT_DEPTH_STR = "spark.siret.knnjoin.pivot.split.depth";
 	public static final String FILTER_STR = "spark.siret.knnjoin.pivot.filter";
 	public static final String EPSILON_STR = "spark.siret.knnjoin.pivot.epsilon";
-	public static final String EPSILON_MULTIPLIER_STR = "spark.siret.knnjoin.pivot.epsilon.multiplier";
+	public static final String EPSILON_EXACT_PF_STR = "spark.siret.knnjoin.pivot.epsilon.exactParentFilter";
 	public static final String PIVOT_METHOD_STR = "spark.siret.knnjoin.pivot.method";
 
 	// parameters for the stats calculator
