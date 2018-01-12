@@ -25,24 +25,42 @@ public class DuplicateFeatureDetector {
 	@SuppressWarnings("serial")
 	private static class Job implements Serializable {
 
-		public void run(String inputPath) throws Exception {
+		public void run(String queriesPath, String databasePath) throws Exception {
 
 			SparkConf conf = new SparkConf().setAppName("Duplicate feature detector").set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
 					.registerKryoClasses(new Class[] { Feature.class, FeaturesKey.class, String.class, Long.class });
 			JavaSparkContext jsc = new JavaSparkContext(conf);
 			int numberOfExecutors = jsc.getConf().getInt("spark.executor.instances", -1);
 
-			JavaPairRDD<Long, String> groupedFeatures = getDuplicateFeatures(jsc.textFile(inputPath, numberOfExecutors));
+			JavaPairRDD<Long, Tuple2<Long, String>> groupedFeatures = getDuplicateFeatures(jsc.textFile(queriesPath, numberOfExecutors / 2),
+					jsc.textFile(databasePath, numberOfExecutors / 2));
 
-			for (Tuple2<Long, String> groupSize : groupedFeatures.collect()) {
-				System.out.println(groupSize._1 + " " + groupSize._2);
+			for (Tuple2<Long, Tuple2<Long, String>> groupSize : groupedFeatures.collect()) {
+				System.out.println(groupSize._1 + " " + groupSize._2._1 + " " + groupSize._2._2);
 			}
 
 			System.out.println("Duplicate feature detection done!");
 			jsc.close();
 		}
 
-		private JavaPairRDD<Long, String> getDuplicateFeatures(JavaRDD<String> data) {
+		private JavaPairRDD<Long, Tuple2<Long, String>> getDuplicateFeatures(JavaRDD<String> queries, JavaRDD<String> database) {
+
+			// for each query we compute number of duplicates in database
+			return getDuplicateObjects(queries).join(getDuplicateObjects(database).filter(new Function<Tuple2<String, Long>, Boolean>() {
+				public Boolean call(Tuple2<String, Long> pair) throws Exception {
+					return pair._2 > 1;
+				}
+			})).mapToPair(new PairFunction<Tuple2<String, Tuple2<Long, Long>>, Long, Tuple2<Long, String>>() {
+				public Tuple2<Long, Tuple2<Long, String>> call(Tuple2<String, Tuple2<Long, Long>> pair) throws Exception {
+
+					long dbDuplicates = pair._2._2;
+					long queryDuplicates = pair._2._1;
+					return new Tuple2<>(dbDuplicates, new Tuple2<>(queryDuplicates, pair._1));
+				}
+			}).sortByKey(false);
+		}
+
+		private JavaPairRDD<String, Long> getDuplicateObjects(JavaRDD<String> data) {
 			return data.mapToPair(new PairFunction<String, String, Long>() {
 				public Tuple2<String, Long> call(String line) throws Exception {
 					int secondSemicolon = line.indexOf(';', line.indexOf(';') + 1);
@@ -55,26 +73,18 @@ public class DuplicateFeatureDetector {
 				public Long call(Long arg0, Long arg1) throws Exception {
 					return arg0 + arg1;
 				}
-			}).filter(new Function<Tuple2<String, Long>, Boolean>() {
-				public Boolean call(Tuple2<String, Long> pair) throws Exception {
-					return pair._2 > 1;
-				}
-			}).mapToPair(new PairFunction<Tuple2<String, Long>, Long, String>() {
-				public Tuple2<Long, String> call(Tuple2<String, Long> pair) throws Exception {
-					return new Tuple2<>(pair._2, pair._1);
-				}
-			}).sortByKey(false);
+			});
 		}
 	}
 
 	public static void main(String[] args) throws Exception {
 
-		if (args.length != 1) {
-			System.out.println("Wrong number of arguments, usage is: <input_path>");
+		if (args.length != 2) {
+			System.out.println("Wrong number of arguments, usage is: <queries_path> <database_path>");
 			return;
 		}
 
 		Job job = new Job();
-		job.run(args[0]);
+		job.run(args[0], args[1]);
 	}
 }
