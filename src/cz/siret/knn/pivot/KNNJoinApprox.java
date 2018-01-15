@@ -40,7 +40,7 @@ import scala.Tuple3;
 public class KNNJoinApprox {
 
 	public enum Method {
-		EXACT, EXACT_BOUNDS, APPROX, APPROX_BOUNDS, EPSILON_APPROX
+		EXACT, EXACT_BOUNDS, APPROX, APPROX_BOUNDS, EPSILON_GUARANTEED, EPSILON_APPROX
 	}
 
 	/**
@@ -101,8 +101,8 @@ public class KNNJoinApprox {
 					+ ", Epsilon: " + epsilonParam + ", ExactParentFilter: " + exactParentFiltering);
 
 			SparkConf conf = new SparkConf().setAppName("Pivot kNN join").set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-					.registerKryoClasses(new Class[] { Feature.class, FeaturesKey.class, Pair.class, FeatureWithOnePartition.class,
-							FeatureWithMultiplePartitions.class, ObjectWithDistance.class, VoronoiStatistics.class, PartitionStatistics.class, NNResult.class });
+					.registerKryoClasses(new Class[] { Feature.class, FeaturesKey.class, Pair.class, FeatureWithOnePartition.class, FeatureWithMultiplePartitions.class,
+							ObjectWithDistance.class, VoronoiStatistics.class, PartitionStatistics.class, NNResult.class });
 			JavaSparkContext jsc = new JavaSparkContext(conf);
 			KnnMetrics knnMetrics = SparkMetricsRegistrator.register(jsc.sc());
 			System.out.println("Startup ready. Serializer: " + jsc.getConf().get("spark.serializer"));
@@ -170,6 +170,7 @@ public class KNNJoinApprox {
 			// kNN computation
 			JavaRDD<NNResult> kNNResult = null;
 			BoundsCalculator boundsCalculator = new BoundsCalculator();
+			IMetric metric = MetricProvider.getMetric();
 			switch (method) {
 			case APPROX:
 				kNNResult = new KNNApproxCalculator(distanceComputations, databaseReplications, maxNumberOfBuckets).computeKNN(partitionedFeatures, k,
@@ -208,9 +209,8 @@ public class KNNJoinApprox {
 				});
 				System.out.println("Done.");
 				break;
-			case EPSILON_APPROX:
+			case EPSILON_GUARANTEED:
 			case EXACT:
-				IMetric metric = MetricProvider.getMetric();
 				float epsilon = method == Method.EXACT ? 1 : epsilonParam;
 				List<List<ObjectWithDistance>> lbOfPartitionSToGroups = boundsCalculator.getLBPartitionOfSToGroups(groups, numberOfReducers, pivots, staticPivotIds,
 						voronoiStatistics, k, metric, epsilon);
@@ -218,6 +218,12 @@ public class KNNJoinApprox {
 				Broadcast<List<List<ObjectWithDistance>>> broadcastedLowerBounds = jsc.broadcast(lbOfPartitionSToGroups);
 				kNNResult = new KNNExactCalculator(distanceComputations, databaseReplications, broadcastedLowerBounds).computeKNN(partitionedFeatures, k,
 						broadcastedPivots, broadcastedVoronoiStats, broadcastedGroups, numberOfReducers, epsilon, exactParentFiltering);
+				break;
+			case EPSILON_APPROX:
+				float[] upperBoundsForVoronoiCells = boundsCalculator.getUpperBoundsForVoronoiCells(pivots, voronoiStatistics, k, metric, epsilonParam);
+				Broadcast<float[]> broadcastedUpperBounds = jsc.broadcast(upperBoundsForVoronoiCells);
+				kNNResult = new KNNEpsApproxCalculator(distanceComputations, databaseReplications, broadcastedUpperBounds, broadcastedVoronoiStats).computeKNN(
+						partitionedFeatures, k, broadcastedPivots, broadcastedVoronoiStats, broadcastedGroups, numberOfReducers, epsilonParam, exactParentFiltering);
 				break;
 			default:
 				throw new Exception("Unknown or unimplemented kNN join computation method " + method);
@@ -327,14 +333,16 @@ public class KNNJoinApprox {
 
 					Collections.sort(distancesToPivots);
 
-					if (method == Method.APPROX) {
+					if (method == Method.APPROX || method == Method.EPSILON_APPROX) {
 						int[] nearestPivots = new int[numberOfNearestPivots];
+						float[] distToNearestPivots = new float[numberOfNearestPivots];
 						for (i = 0; i < numberOfNearestPivots; i++) {
 							nearestPivots[i] = distancesToPivots.get(i).getObjectId();
+							distToNearestPivots[i] = distancesToPivots.get(i).getDistance();
 						}
 
-						return new Tuple2<Integer, IFeatureWithPartition>(distancesToPivots.get(0).getObjectId(),
-								new FeatureWithMultiplePartitions(feature, nearestPivots, distancesToPivots.get(0).getDistance(), isDatabase, distToStaticPivots));
+						return new Tuple2<Integer, IFeatureWithPartition>(distancesToPivots.get(0).getObjectId(), new FeatureWithMultiplePartitions(feature, nearestPivots,
+								distToNearestPivots, distancesToPivots.get(0).getDistance(), isDatabase, distToStaticPivots));
 					} else {
 						return new Tuple2<Integer, IFeatureWithPartition>(distancesToPivots.get(0).getObjectId(), new FeatureWithOnePartition(feature,
 								distancesToPivots.get(0).getObjectId(), distancesToPivots.get(0).getDistance(), isDatabase, distToStaticPivots));

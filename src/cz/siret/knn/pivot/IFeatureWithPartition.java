@@ -11,6 +11,8 @@ public interface IFeatureWithPartition extends Serializable {
 	int getNearestPivot();
 
 	int[] getNearestPivots();
+	
+	float[] getDistToNearestPivots();
 
 	boolean isDatabase();
 

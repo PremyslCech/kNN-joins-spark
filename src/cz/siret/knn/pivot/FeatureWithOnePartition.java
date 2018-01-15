@@ -28,4 +28,9 @@ public class FeatureWithOnePartition extends FeatureWithPartitionBase {
 	public int[] getNearestPivots() {
 		throw new NotImplementedError();
 	}
+
+	@Override
+	public float[] getDistToNearestPivots() {
+		throw new NotImplementedError();
+	}
 }

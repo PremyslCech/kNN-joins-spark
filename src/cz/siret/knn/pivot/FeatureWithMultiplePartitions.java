@@ -6,11 +6,14 @@ import cz.siret.knn.model.Feature;
 public class FeatureWithMultiplePartitions extends FeatureWithPartitionBase {
 
 	private final int[] nearestPivots;
+	private final float[] distToNearestPivots;
 
-	public FeatureWithMultiplePartitions(Feature feature, int[] nearestPivots, float distanceToPivot, boolean isDatabase, float[] distancesToStaticPivots) {
-		
+	public FeatureWithMultiplePartitions(Feature feature, int[] nearestPivots, float[] distToNearestPivots, float distanceToPivot, boolean isDatabase,
+			float[] distancesToStaticPivots) {
+
 		super(feature, distanceToPivot, isDatabase, distancesToStaticPivots);
 		this.nearestPivots = nearestPivots;
+		this.distToNearestPivots = distToNearestPivots;
 	}
 
 	@Override
@@ -21,5 +24,11 @@ public class FeatureWithMultiplePartitions extends FeatureWithPartitionBase {
 	@Override
 	public int[] getNearestPivots() {
 		return nearestPivots;
+	}
+
+	@Override
+	public float[] getDistToNearestPivots() {
+		// TODO Auto-generated method stub
+		return distToNearestPivots;
 	}
 }

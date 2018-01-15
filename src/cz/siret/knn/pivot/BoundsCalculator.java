@@ -69,9 +69,9 @@ public class BoundsCalculator implements Serializable {
 	 * cells that will be replicated there and are the closest FilterRatio cells to the query. Just for testing purposes.
 	 * 
 	 */
-	public PairFunction<IFeatureWithPartition, FeaturesKey, Float> getUpperBoundsForAllQueries(final Broadcast<int[]> groupsInList,
-			final int numberOfGroups, final Broadcast<List<Feature>> pivots, final Broadcast<VoronoiStatistics> voronoiStatistics,
-			final Broadcast<List<List<Integer>>> reverseNearestPivots, final int k, final int maxNumberOfBuckets) throws Exception {
+	public PairFunction<IFeatureWithPartition, FeaturesKey, Float> getUpperBoundsForAllQueries(final Broadcast<int[]> groupsInList, final int numberOfGroups,
+			final Broadcast<List<Feature>> pivots, final Broadcast<VoronoiStatistics> voronoiStatistics, final Broadcast<List<List<Integer>>> reverseNearestPivots,
+			final int k, final int maxNumberOfBuckets) throws Exception {
 
 		return new PairFunction<IFeatureWithPartition, FeaturesKey, Float>() {
 
@@ -136,6 +136,22 @@ public class BoundsCalculator implements Serializable {
 				return new Tuple2<>(query.getFeature().getKey(), ubMaxRecDepth);
 			}
 		};
+	}
+
+	/**
+	 * Computes upper bounds for all query Voronoi cells
+	 */
+	public float[] getUpperBoundsForVoronoiCells(List<Feature> pivots, VoronoiStatistics voronoiStatistics, int k, IMetric metric, float epsilon)
+			throws Exception {
+
+		List<Integer> allPivots = new ArrayList<>(pivots.size());
+		for (int i = 0; i < pivots.size(); i++) {
+			allPivots.add(i);
+		}
+
+		float[][] distMatrix = computeDistanceMatrix(pivots, metric, allPivots);
+		float[] upperBoundForR = getUpperBound(allPivots, distMatrix, voronoiStatistics, k, epsilon);
+		return upperBoundForR;
 	}
 
 	/**
