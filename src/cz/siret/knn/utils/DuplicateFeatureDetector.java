@@ -48,7 +48,8 @@ public class DuplicateFeatureDetector {
 			// for each query we compute number of duplicates in database
 			return getDuplicateObjects(queries).join(getDuplicateObjects(database).filter(new Function<Tuple2<String, Long>, Boolean>() {
 				public Boolean call(Tuple2<String, Long> pair) throws Exception {
-					return pair._2 > 1;
+					//return pair._2 > 1;
+					return pair._2 > 0;
 				}
 			})).mapToPair(new PairFunction<Tuple2<String, Tuple2<Long, Long>>, Long, Tuple2<Long, String>>() {
 				public Tuple2<Long, Tuple2<Long, String>> call(Tuple2<String, Tuple2<Long, Long>> pair) throws Exception {
