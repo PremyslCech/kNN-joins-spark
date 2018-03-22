@@ -186,10 +186,14 @@ public abstract class KNNBaseCalculator implements Serializable {
 				throw new Error("databasePartitionStats for pivot id " + pid + " is null");
 			}
 
-			float distToHP = (distFromQueryToPivot * distFromQueryToPivot - query.getDistanceToPivot() * query.getDistanceToPivot())
-					/ (2 * distancesBetweenPivots[pid]);
-			if (distToHP > ballFilterRadius || distFromQueryToPivot > databasePartitionStats[pid].getMaxDist() + ballFilterRadius
-					|| !databasePartitionStats[pid].getCutRegion().isOverlapping(query.getDistancesToStaticPivots(), ballFilterRadius)) {
+			// !!works only for some metrics!!
+			// float distToHP = (distFromQueryToPivot * distFromQueryToPivot - query.getDistanceToPivot() * query.getDistanceToPivot())
+			// / (2 * distancesBetweenPivots[pid]);
+			// distToHP > ballFilterRadius
+
+			if (distFromQueryToPivot - ballFilterRadius >= query.getDistanceToPivot() + ballFilterRadius // hyperplane filtering
+					|| distFromQueryToPivot > databasePartitionStats[pid].getMaxDist() + ballFilterRadius // ball filtering
+					|| !databasePartitionStats[pid].getCutRegion().isOverlapping(query.getDistancesToStaticPivots(), ballFilterRadius)) { // cut-region filtering
 				continue;
 			}
 
@@ -217,7 +221,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 						actualRadius = neighbors.peek()._2 / (exactParentFiltering ? 1 : epsilon); // the epsilon is used after "k" candidates are found
 						ballFilterRadius = neighbors.peek()._2 / epsilon;
 					}
-				} else if (dist < actualRadius) {
+				} else if (dist < neighbors.peek()._2) {
 					neighbors.remove();
 					neighbors.add(new Tuple2<>(o_S.getFeature().toFeaturesKeyClassified(), dist));
 					actualRadius = neighbors.peek()._2 / (exactParentFiltering ? 1 : epsilon);
