@@ -269,8 +269,18 @@ public class BoundsCalculator implements Serializable {
 			knn.clear();
 			for (int j = 0; j < pivotCount; j++) {
 
-				PartitionStatistics databaseStats = databaseStatistics[j];
-				float distBetweenPivots = distMatrix[i][j];
+				int pivInS = j;
+				// if we compute UB for the epsilon guaranteed method, the upper bound is computed only from the specific group
+				if (epsilon != 1) {
+					if (j >= group.size()) {
+						break;
+					} else {
+						pivInS = group.get(j);
+					}
+				}
+				
+				PartitionStatistics databaseStats = databaseStatistics[pivInS];
+				float distBetweenPivots = distMatrix[i][pivInS];
 				for (float distToNearestNeighbor : databaseStats.getDistancesToNearestObjects()) {
 
 					float maxDist = queryDistance + distBetweenPivots + distToNearestNeighbor;
@@ -306,9 +316,10 @@ public class BoundsCalculator implements Serializable {
 
 		for (int pidInS = 0; pidInS < output.size(); pidInS++) {
 
-			if (isPrunedByCutRegions(group, distMatrix, upperBoundForR, staticPivotIds, partS[pidInS].getCutRegion())) {
+			// this does not help - I guess CR cannot be used in the replication phase
+			/*if (isPrunedByCutRegions(group, distMatrix, upperBoundForR, staticPivotIds, partS[pidInS].getCutRegion())) {
 				continue;
-			}
+			}*/
 
 			float minLB = partS[pidInS].getMaxDist() + 1;
 			for (int j = 0; j < group.size(); j++) {
