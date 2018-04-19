@@ -166,7 +166,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 
 		KnnHelper knnHelper = new KnnHelper();
 		PriorityQueue<Tuple2<FeaturesKeyClassified, Float>> neighbors = knnHelper.getNeighborsPriorityQueue(k);
-		List<ObjectWithDistance> distanceToOtherPivots = computeDistanceToOtherPivots(query, partsS, metric, pivots);
+		List<ObjectWithDistance> distanceToOtherPivots = computeDistanceToOtherPivots(query, partsS, metric, pivots, databasePartitionStats);
 		float actualRadius = getMaxRadius(query, distanceToOtherPivots, databasePartitionStats, k);
 		float ballFilterRadius = actualRadius; // the epsilon is used after "k" candidates are found
 		for (int i = 0; i < distanceToOtherPivots.size(); i++) {
@@ -196,12 +196,6 @@ public abstract class KNNBaseCalculator implements Serializable {
 					|| !databasePartitionStats[pid].getCutRegion().isOverlapping(query.getDistancesToStaticPivots(), ballFilterRadius)) { // cut-region filtering
 				continue;
 			}
-
-			// float maxDistFromSToPivot = databasePartitionStats[pid].getMaxDist();
-			// // triangle inequality - check overlap of partitions
-			// if (distFromQueryToPivot > maxDistFromSToPivot + actualRadius) {
-			// continue;
-			// }
 
 			List<IFeatureWithPartition> partFromS = partsS.get(pid);
 			for (IFeatureWithPartition o_S : partFromS) {
@@ -234,7 +228,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 	}
 
 	private List<ObjectWithDistance> computeDistanceToOtherPivots(IFeatureWithPartition query, HashMap<Integer, List<IFeatureWithPartition>> partsS,
-			IMetric metric, List<Feature> pivots) throws Exception {
+			IMetric metric, List<Feature> pivots, final PartitionStatistics[] databasePartitionStats) throws Exception {
 
 		List<ObjectWithDistance> result = new ArrayList<>(partsS.size());
 
@@ -243,7 +237,14 @@ public abstract class KNNBaseCalculator implements Serializable {
 			result.add(new ObjectWithDistance(pivotId, metric.dist(query.getFeature(), otherPivot)));
 		}
 
-		Collections.sort(result);
+		//Collections.sort(result);
+		Collections.sort(result, new Comparator<ObjectWithDistance>() {
+			public int compare(ObjectWithDistance o1, ObjectWithDistance o2) {
+				float dist1 = o1.getDistance() - databasePartitionStats[o1.getObjectId()].getMaxDist();
+				float dist2 = o2.getDistance() - databasePartitionStats[o2.getObjectId()].getMaxDist();
+				return Float.compare(dist1, dist2);
+			}
+		});
 		return result;
 	}
 
