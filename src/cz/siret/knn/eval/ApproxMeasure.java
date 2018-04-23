@@ -2,11 +2,11 @@ package cz.siret.knn.eval;
 
 public class ApproxMeasure {
 
-	private final String description;
+	protected final String description;
 
-	private final float min;
-	private final float max;
-	private final float average;
+	protected final float min;
+	protected final float max;
+	protected final float average;
 
 	// initialization with only one value
 	public ApproxMeasure(String description, float value) {
@@ -28,19 +28,13 @@ public class ApproxMeasure {
 		return new ApproxMeasure(description, Math.min(min, other.min), Math.max(max, other.max), average + other.average);
 	}
 
-	public float getMin() {
-		return min;
+	public String getOutput(String separator, long totalCount) {
+		StringBuilder output = new StringBuilder();
+		output.append(min).append(separator).append(max).append(separator).append(getAverage(totalCount));
+		return output.toString();
 	}
 
-	public float getMax() {
-		return max;
-	}
-
-	public float getAverage(long count) {
+	private float getAverage(long count) {
 		return average / count;
-	}
-
-	public String getDescription() {
-		return description;
 	}
 }

@@ -34,7 +34,7 @@ public class PrecisionStats {
 		for (int i = 0; i < approxMeasures.size(); i++) {
 
 			ApproxMeasure approxMeasure = approxMeasures.get(i);
-			output.append(approxMeasure.getMin()).append(separator).append(approxMeasure.getMax()).append(separator).append(approxMeasure.getAverage(totalCount));
+			output.append(approxMeasure.getOutput(separator, totalCount));
 
 			if (i < approxMeasures.size() - 1) {
 				output.append(separator);

@@ -115,7 +115,7 @@ public class PrecisionEvaluator {
 									float avgEffectiveError = getAverageEffectiveErrorForK(base, compare, k);
 
 									List<ApproxMeasure> approxMeasures = Arrays.asList(new ApproxMeasure("DistanceDiff", distanceDiff), new ApproxMeasure("Precision", precision),
-											new ApproxMeasure("DistanceRatio", distRatio), new ApproxMeasure("EffectiveError", effectiveError),
+											new ApproxMeasure("DistanceRatio", distRatio), new ApproxMeasureWithHist("EffectiveError", effectiveError),
 											new ApproxMeasure("AvgEffectiveError", avgEffectiveError));
 
 									output.add(new Tuple2<>(k + 1, new PrecisionStats(approxMeasures, 1)));
