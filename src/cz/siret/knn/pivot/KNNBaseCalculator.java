@@ -172,7 +172,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 		for (int i = 0; i < distanceToOtherPivots.size(); i++) {
 
 			// possible approximation
-			if (TerminateEarly(i)) {
+			if (neighbors.size() == k && TerminateEarly(i)) {
 				break;
 			}
 
