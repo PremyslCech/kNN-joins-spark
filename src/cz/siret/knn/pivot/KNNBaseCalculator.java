@@ -23,6 +23,7 @@ import cz.siret.knn.metric.MetricProvider;
 import cz.siret.knn.model.Feature;
 import cz.siret.knn.model.FeaturesKeyClassified;
 import cz.siret.knn.model.NNResult;
+import cz.siret.knn.model.NNResultWithError;
 import scala.Tuple2;
 
 @SuppressWarnings("serial")
@@ -145,8 +146,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 
 					return output;
 				} catch (Exception e) {
-					e.printStackTrace();
-					return null;
+					return new NNResultWithError(e.getMessage());
 				}
 			}
 		};
@@ -167,8 +167,10 @@ public abstract class KNNBaseCalculator implements Serializable {
 		KnnHelper knnHelper = new KnnHelper();
 		PriorityQueue<Tuple2<FeaturesKeyClassified, Float>> neighbors = knnHelper.getNeighborsPriorityQueue(k);
 		List<ObjectWithDistance> distanceToOtherPivots = computeDistanceToOtherPivots(query, partsS, metric, pivots);
+
 		float actualRadius = getMaxRadius(query, distanceToOtherPivots, databasePartitionStats, k);
 		float ballFilterRadius = actualRadius; // the epsilon is used after "k" candidates are found
+
 		for (int i = 0; i < distanceToOtherPivots.size(); i++) {
 
 			// possible approximation
@@ -191,7 +193,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 			// / (2 * distancesBetweenPivots[pid]);
 			// distToHP > ballFilterRadius
 
-			if (distFromQueryToPivot - ballFilterRadius >= query.getDistanceToPivot() + ballFilterRadius // hyperplane filtering
+			if (distFromQueryToPivot - ballFilterRadius > query.getDistanceToPivot() + ballFilterRadius // hyperplane filtering
 					|| distFromQueryToPivot > databasePartitionStats[pid].getMaxDist() + ballFilterRadius // ball filtering
 					|| !databasePartitionStats[pid].getCutRegion().isOverlapping(query.getDistancesToStaticPivots(), ballFilterRadius)) { // cut-region filtering
 				continue;
@@ -268,7 +270,7 @@ public abstract class KNNBaseCalculator implements Serializable {
 			}
 		}
 
-		return distances.peek();
+		return distances.size() == k ? distances.peek() : Float.MAX_VALUE;
 	}
 
 	protected boolean TerminateEarly(int orderOfPartition) {

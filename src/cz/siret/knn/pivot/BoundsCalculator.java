@@ -329,10 +329,10 @@ public class BoundsCalculator implements Serializable {
 
 				// partR[pidInR].getMaxDist() maybe not necessary? - IT IS NECESSARY
 				float lb = dist - partR[pidInR].getMaxDist() - upperBoundForR[j];
-				if (lb < partS[pidInS].getMinDist()) {
+				if (lb <= partS[pidInS].getMinDist()) {
 					minLB = partS[pidInS].getMinDist();
 					break;
-				} else if (lb < partR[pidInR].getMaxDist() && lb < minLB) {
+				} else if (lb <= partR[pidInR].getMaxDist() && lb < minLB) {
 					minLB = lb;
 				}
 			}
