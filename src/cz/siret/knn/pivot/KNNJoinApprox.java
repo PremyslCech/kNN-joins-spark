@@ -28,6 +28,7 @@ import cz.siret.knn.SparkUtils;
 import cz.siret.knn.metric.IMetric;
 import cz.siret.knn.metric.MetricProvider;
 import cz.siret.knn.model.*;
+import cz.siret.knn.naive.NaiveKnnCalculator;
 import scala.Tuple2;
 import scala.Tuple3;
 
@@ -40,7 +41,7 @@ import scala.Tuple3;
 public class KNNJoinApprox {
 
 	public enum Method {
-		EXACT, EXACT_BOUNDS, APPROX, APPROX_BOUNDS, EPSILON_GUARANTEED, EPSILON_APPROX
+		EXACT, EXACT_BOUNDS, APPROX, APPROX_BOUNDS, EPSILON_GUARANTEED, EPSILON_APPROX, QUERY_REP
 	}
 
 	/**
@@ -173,8 +174,17 @@ public class KNNJoinApprox {
 			IMetric metric = MetricProvider.getMetric();
 			switch (method) {
 			case APPROX:
-				kNNResult = new KNNApproxCalculator(distanceComputations, databaseReplications, maxNumberOfBuckets).computeKNN(partitionedFeatures, k,
+				kNNResult = new KNNApproxCalculator(true, distanceComputations, databaseReplications, maxNumberOfBuckets).computeKNN(partitionedFeatures, k,
 						broadcastedPivots, broadcastedVoronoiStats, broadcastedGroups, numberOfReducers, 1, true);
+				break;
+			case QUERY_REP:
+				kNNResult = new KNNApproxCalculator(false, distanceComputations, databaseReplications, maxNumberOfBuckets).computeKNN(partitionedFeatures, k,
+						broadcastedPivots, broadcastedVoronoiStats, broadcastedGroups, numberOfReducers, 1, true);
+				kNNResult = new NaiveKnnCalculator().mergeResults(kNNResult.mapToPair(new PairFunction<NNResult, FeaturesKey, NNResult>() {
+					public Tuple2<FeaturesKey, NNResult> call(NNResult result) throws Exception {
+						return new Tuple2<>(result.queryKey, result);
+					}
+				}), k);
 				break;
 			case EXACT_BOUNDS: // set parameters to exact search and do the same computation which is done for the approximate bounds
 				maxRecDepth = pivotCount;
@@ -333,7 +343,7 @@ public class KNNJoinApprox {
 
 					Collections.sort(distancesToPivots);
 
-					if (method == Method.APPROX || method == Method.EPSILON_APPROX) {
+					if (method == Method.APPROX || method == Method.EPSILON_APPROX || method == Method.QUERY_REP) {
 						int[] nearestPivots = new int[numberOfNearestPivots];
 						float[] distToNearestPivots = new float[numberOfNearestPivots];
 						for (i = 0; i < numberOfNearestPivots; i++) {

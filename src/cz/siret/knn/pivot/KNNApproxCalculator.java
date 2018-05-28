@@ -17,9 +17,11 @@ import scala.Tuple2;
 public class KNNApproxCalculator extends KNNBaseCalculator {
 
 	private final int maxNumberOfBuckets;
+	private final boolean replicateDb;
 
-	public KNNApproxCalculator(LongAccumulator distanceComputations, LongAccumulator databaseReplications, int maxNumberOfBuckets) {
+	public KNNApproxCalculator(boolean replicateDb, LongAccumulator distanceComputations, LongAccumulator databaseReplications, int maxNumberOfBuckets) {
 		super(distanceComputations, databaseReplications);
+		this.replicateDb = replicateDb;
 		this.maxNumberOfBuckets = maxNumberOfBuckets;
 	}
 
@@ -32,7 +34,7 @@ public class KNNApproxCalculator extends KNNBaseCalculator {
 			public Iterator<Tuple2<Integer, IFeatureWithPartition>> call(final Tuple2<Integer, IFeatureWithPartition> pair) throws Exception {
 
 				final int[] groupsLocal = groups.value();
-				if (pair._2.isDatabase()) {
+				if ((pair._2.isDatabase() && replicateDb) || (!pair._2.isDatabase() && !replicateDb)) {
 
 					HashSet<Integer> usedGroups = new HashSet<>();
 					// copy without all nearest neighbors which are not needed later
