@@ -28,7 +28,7 @@ Configurations are provided in the conf file. Example is in the "siret.conf" fil
 Input format of both query (R) and database (S) data (sparse text format):
 
 	Fields are separated by semicolon ";".
-	First field: 				ID - have two parts <id1>_<id2> (two integers)
+	First field: 				ID - have one to three parts seperated by "_" (e.g. <id> (integer) or <id1>_<id2> (two integers))
 	Second field: 				Classification (integer)
 	Third field:				Not specified bins values (float)
 	Then follow pairs of specified bins: 	<bin_ID>:<value> (integer : float)
